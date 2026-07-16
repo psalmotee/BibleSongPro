@@ -4493,7 +4493,7 @@
       });
     }
 
-    function applyLoadedState(stateValue, songRecords, bibleRecords, opts = {}) {
+    function applyLoadedState(stateValue, songRecords, bibleRecords, textRecords, opts = {}) {
       const runInit = opts.runInit !== false;
       const bgSettingsValue = opts.bgSettingsValue;
       const bgSettingsUpdatedAt = opts.bgSettingsUpdatedAt || 0;
@@ -4514,6 +4514,7 @@
         if (!record || !record.id) return;
         bibles[record.id] = Array.isArray(record.parsedData) ? record.parsedData : [];
       });
+      texts = (textRecords || []).map(hydrateTextFromRecord);
 
       appState = mergeAppStateWithDefaults(stateValue || {});
       const persistedHostMode = stateValue?.host?.mode || (appState.settings && appState.settings.hostMode) || HOST_MODE_OBS;
@@ -4713,10 +4714,11 @@
     // ===== INIT =====
     async function bootApp() {
       await openDb();
-      const [stateEntry, songRecords, bibleRecords, ltStylesEntry, bgSettingsEntry, animationSettingsEntry, typographySettingsEntry, modeSettingsEntry] = await Promise.all([
+      const [stateEntry, songRecords, bibleRecords, textRecords, ltStylesEntry, bgSettingsEntry, animationSettingsEntry, typographySettingsEntry, modeSettingsEntry] = await Promise.all([
         idbGet(STORE_STATE, 'appState'),
         idbGetAll(STORE_SONGS),
         idbGetAll(STORE_BIBLES),
+        idbGetAll(STORE_TEXTS),
         idbGet(STORE_STATE, 'ltStyles'),
         idbGet(STORE_STATE, 'bgSettings'),
         idbGet(STORE_STATE, 'animationSettings'),
@@ -4728,6 +4730,7 @@
         (stateEntry && stateEntry.value) ? stateEntry.value : null,
         songRecords,
         bibleRecords,
+        textRecords,
         {
           runInit: true,
           ltStylesValue: ltStylesEntry ? ltStylesEntry.value : null,
