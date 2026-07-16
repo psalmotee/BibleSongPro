@@ -452,6 +452,14 @@
                   </div>
                   <div
                     class="tab"
+                    id="tab-text"
+                    onclick="setSidebarTab('text')"
+                    data-i18n="ui_tab_text"
+                  >
+                    Text
+                  </div>
+                  <div
+                    class="tab"
                     id="tab-schedule"
                     onclick="setSidebarTab('schedule')"
                     data-i18n="ui_tab_setlist"
@@ -3254,6 +3262,14 @@
           data-i18n="ui_tab_songs"
         >
           Songs
+        </button>
+        <button
+          class="page-nav-btn"
+          data-side-tab="text"
+          onclick="switchBottomNavSidebarTab('text')"
+          data-i18n="ui_tab_text"
+        >
+          Text
         </button>
         <button
           class="page-nav-btn"
