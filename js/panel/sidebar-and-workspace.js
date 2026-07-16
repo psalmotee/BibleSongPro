@@ -335,6 +335,31 @@
         const target = buildScheduleSelectionTarget(entry);
         return target ? { kind: 'bible', ...target } : null;
       }
+      // Check if this is a text item
+      const isText = entry.contentType === 'text' || (typeof isTextItem === 'function' && isTextItem(entry));
+      if (isText) {
+        return {
+          kind: 'text',
+          textId: entry.id || null,
+          title: entry.title || '',
+          content: entry.content || entry.text || '',
+          index: Array.isArray(texts)
+            ? texts.findIndex(text =>
+                text &&
+                (
+                  (entry.id && text.id === entry.id) ||
+                  (
+                    String(text.title || '') === String(entry.title || '') &&
+                    String(text.content || text.text || '') === String(entry.content || entry.text || '')
+                  )
+                )
+              )
+            : null,
+          lineCursor: Number.isFinite(lineCursor)
+            ? lineCursor
+            : (Number.isFinite(entry.pageIndex) ? entry.pageIndex : 0)
+        };
+      }
       return {
         kind: 'songs',
         songId: entry.id || null,
