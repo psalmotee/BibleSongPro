@@ -508,6 +508,82 @@
       }
     }
 
+    /**
+     * Parses a TXT file and splits it into multiple songs.
+     * Uses double blank lines as song separators (compatible with common songbooks).
+     * Falls back to triple newlines if no double blank lines are found.
+     * @param {string} fileContent - The raw text content from the file
+     * @param {string} fileName - The original filename (used for fallback naming)
+     * @returns {Array<Object>} Array of parsed song objects
+     */
+    function parseMultipleSongsFromTxt(fileContent, fileName = "Import") {
+      if (!fileContent || typeof fileContent !== 'string') {
+        return [];
+      }
+
+      // Normalize line endings
+      const normalized = normalizeSongLyricsLineBreaks(fileContent);
+      const lines = normalized.split('\n');
+
+      // Try to detect song separators
+      // Most songbooks use double blank lines (two consecutive newlines)
+      const doubleBlankPattern = /\n\s*\n\s*\n/;
+      const hasDoubleBlankSeparators = doubleBlankPattern.test(normalized);
+
+      let rawSongs = [];
+
+      if (hasDoubleBlankSeparators) {
+        // Split by triple newlines (effectively double blank lines)
+        rawSongs = normalized
+          .split(/\n\s*\n\s*\n+/)
+          .map(song => song.trim())
+          .filter(Boolean);
+      } else {
+        // If no double blank lines, try to detect other patterns
+        // Check for numbered song headers like "1. Song Title" at line starts
+        const numberedSongPattern = /^\d+\.\s+.+$/m;
+        if (numberedSongPattern.test(normalized)) {
+          // Split by numbered headers
+          rawSongs = normalized
+            .split(/(?=^\d+\.\s+)/m)
+            .map(song => song.trim())
+            .filter(Boolean);
+        } else {
+          // If no clear separators, treat entire file as single song
+          rawSongs = [normalized.trim()];
+        }
+      }
+
+      // Convert raw songs to structured format
+      return rawSongs.map((songText, index) => {
+        const lines = songText.split('\n').map(line => line.trim()).filter(Boolean);
+        if (!lines.length) return null;
+
+        // Extract title (first non-empty line, or use generic name)
+        let title = lines[0];
+
+        // Remove common section headers if they appear in title
+        if (/^(\d+\.|\[.*?\]|(?:verse|chorus|bridge)/i.test(title)) {
+          title = lines.find(line =>
+            !/^(\d+\.|\[.*?\]|(?:verse|chorus|bridge)/i.test(line)
+          ) || `Song ${index + 1}`;
+        }
+
+        // Clean up title
+        title = String(title || `Song ${index + 1}`)
+          .replace(/^[\d.]+\s*/, '') // Remove leading numbers
+          .replace(/^\[.*?\]\s*/, '') // Remove section headers
+          .trim() || `Song ${index + 1}`;
+
+        return {
+          rawText: songText,
+          title: title,
+          content: songText,
+          lyrics: songText
+        };
+      }).filter(Boolean);
+    }
+
     function combineVersesIntoFlow(verseLines) {
       let combinedText = '';
       verseLines.forEach((line, index) => {
@@ -1413,4 +1489,45 @@
       const idx = Math.max(0, Math.min(lineCursor, pages.length - 1));
       const page = pages[idx] || pages[0];
       return (page && page.raw) ? page.raw : '';
+    }
+
+    /**
+     * Gets projected text for display with paragraph-based pagination.
+     * Text items use natural paragraph breaks rather than verse sections.
+     * @param {Object} textItem - The text item to project
+     * @param {number} pageIndex - Which page/paragraph grouping to display
+     * @param {number} lineCountOverride - Optional lines per page override
+     * @returns {Object} { html, raw, tag } for the projected page
+     */
+    function getProjectedTextPage(textItem, pageIndex = 0, lineCountOverride = null) {
+      if (!textItem || isTextItem(textItem) !== true) {
+        return { html: '', raw: '', tag: 'Text' };
+      }
+
+      const pages = getPagesFromItem(textItem, false, lineCountOverride);
+      if (!pages || pages.length === 0) {
+        return { html: '', raw: '', tag: 'Text' };
+      }
+
+      const idx = Math.max(0, Math.min(Number(pageIndex) || 0, pages.length - 1));
+      const page = pages[idx];
+
+      return {
+        html: page.text || '',
+        raw: page.raw || '',
+        tag: page.tag || 'Text'
+      };
+    }
+
+    /**
+     * Gets full projected HTML for a text item including formatting.
+     * Preserves paragraph structure and natural formatting of the text.
+     * @param {Object} textItem - The text item to project
+     * @param {number} pageIndex - Which page/paragraph to show
+     * @param {number} lineCountOverride - Optional lines per page
+     * @returns {string} HTML string for display
+     */
+    function getProjectedTextHtml(textItem, pageIndex = 0, lineCountOverride = null) {
+      const page = getProjectedTextPage(textItem, pageIndex, lineCountOverride);
+      return page.html || '';
     }

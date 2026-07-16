@@ -1903,9 +1903,11 @@ function addToSet(i, e) {
   let list =
     sidebarTab === "songs"
       ? songs
-      : activeBibleVersion
-        ? bibles[activeBibleVersion]
-        : [];
+      : sidebarTab === "text"
+        ? texts
+        : activeBibleVersion
+          ? bibles[activeBibleVersion]
+          : [];
   if (!list[i]) return;
   insertIntoSchedule(
     { ...list[i] },

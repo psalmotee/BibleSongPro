@@ -1210,30 +1210,63 @@ async function handleImport(input) {
           importedCount += 1;
           continue;
         }
-        const newSong = {
-          id: createId("song", title),
-          title,
-          content: text,
-          text,
-          translatedLyrics: "",
-          translationLanguage: getSongBilingualSettings().targetLanguage,
-          translationStatus: "idle",
-          translationLocked: false,
-          translatedAt: 0,
-          translationHash: computeTranslationHash(
+        // Try to parse multiple songs from the file
+        const parsedSongs = parseMultipleSongsFromTxt(text, file.name);
+        if (parsedSongs && parsedSongs.length > 1) {
+          // Multiple songs detected - import each as separate song
+          for (const parsedSong of parsedSongs) {
+            const newSong = {
+              id: createId("song", parsedSong.title),
+              title: parsedSong.title,
+              content: parsedSong.content,
+              text: parsedSong.content,
+              translatedLyrics: "",
+              translationLanguage: getSongBilingualSettings().targetLanguage,
+              translationStatus: "idle",
+              translationLocked: false,
+              translatedAt: 0,
+              translationHash: computeTranslationHash(
+                parsedSong.content,
+                getSongBilingualSettings().targetLanguage,
+              ),
+              searchableText: normalizeSearchText(`${parsedSong.title}\n${parsedSong.content}`),
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+            };
+            songs.push(newSong);
+            idbPut(STORE_SONGS, buildSongRecord(newSong, { isNew: true })).catch(
+              () => {},
+            );
+            maybeTranslateImportedSong(newSong);
+            importedCount += 1;
+          }
+        } else {
+          // Single song or parsing failed - import as single song
+          const newSong = {
+            id: createId("song", title),
+            title,
+            content: text,
             text,
-            getSongBilingualSettings().targetLanguage,
-          ),
-          searchableText: normalizeSearchText(`${title}\n${text}`),
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        };
-        songs.push(newSong);
-        idbPut(STORE_SONGS, buildSongRecord(newSong, { isNew: true })).catch(
-          () => {},
-        );
-        maybeTranslateImportedSong(newSong);
-        importedCount += 1;
+            translatedLyrics: "",
+            translationLanguage: getSongBilingualSettings().targetLanguage,
+            translationStatus: "idle",
+            translationLocked: false,
+            translatedAt: 0,
+            translationHash: computeTranslationHash(
+              text,
+              getSongBilingualSettings().targetLanguage,
+            ),
+            searchableText: normalizeSearchText(`${title}\n${text}`),
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          };
+          songs.push(newSong);
+          idbPut(STORE_SONGS, buildSongRecord(newSong, { isNew: true })).catch(
+            () => {},
+          );
+          maybeTranslateImportedSong(newSong);
+          importedCount += 1;
+        }
       } else {
         skippedUnsupported += 1;
         continue;
@@ -2038,7 +2071,7 @@ function detectBibleLanguage(xml, verName) {
     { key: "gussi", patterns: ["gussi"] },
     { key: "hadiyya", patterns: ["hadiyya"] },
     { key: "haitian", patterns: ["haitian", "kreyol", "créole", "creole"] },
-    { key: "haryanvi", patterns: ["haryanvi", "हरियाणवी"] },
+    { key: "haryanvi", patterns: ["haryanvi", "हरियाण��ी"] },
     { key: "hausa", patterns: ["hausa"] },
     { key: "hebrew", patterns: ["hebrew", "עברית"] },
     { key: "ika", patterns: ["ika"] },
