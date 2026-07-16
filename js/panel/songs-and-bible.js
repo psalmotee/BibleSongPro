@@ -1414,3 +1414,94 @@
       const page = pages[idx] || pages[0];
       return (page && page.raw) ? page.raw : '';
     }
+
+    function detectSongStructure(text) {
+      const lines = String(text || '').split('\n');
+      let hasBracketHeaders = false;
+      let hasNamedHeaders = false;
+      let hasNumericHeaders = false;
+      let hasBlankLines = false;
+
+      lines.forEach(line => {
+        const trimmed = String(line || '').trim();
+        if (!trimmed) {
+          hasBlankLines = true;
+          return;
+        }
+        if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+          hasBracketHeaders = true;
+        }
+        if (parseNamedSongSectionHeader(trimmed)) {
+          hasNamedHeaders = true;
+        }
+        if (parseSongVerseHeader(trimmed, true)) {
+          hasNumericHeaders = true;
+        }
+      });
+
+      const songStructureScore = (hasBracketHeaders ? 3 : 0) + (hasNamedHeaders ? 3 : 0) + (hasNumericHeaders ? 2 : 0) + (hasBlankLines ? 1 : 0);
+      return songStructureScore >= 3;
+    }
+
+    function detectAndSplitMultipleSongs(text) {
+      const lines = String(text || '').split('\n');
+      const songs = [];
+      let currentTitle = '';
+      let currentContent = [];
+      let inContent = false;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = String(line || '').trim();
+
+        if (!trimmed) {
+          if (inContent) currentContent.push(line);
+          continue;
+        }
+
+        const isAllCaps = trimmed === trimmed.toUpperCase() && trimmed.length > 2 && /[a-z]/i.test(trimmed);
+        const isLikeTitleEnd = trimmed.endsWith('™') || trimmed.endsWith('®') || trimmed.endsWith('©');
+        const nextLineIsSection = i + 1 < lines.length && (
+          /^\s*\[/.test(lines[i + 1]) ||
+          /^(verse|chorus|bridge|refrain|pre[-\s]?chorus|intro|outro)(\s+\d+)?[:.\-]?/i.test(lines[i + 1]) ||
+          /^\d+[:.,]\s*/.test(lines[i + 1])
+        );
+
+        if ((isAllCaps || isLikeTitleEnd || (nextLineIsSection && !inContent)) && trimmed.length > 0) {
+          if (currentTitle && currentContent.length > 0) {
+            songs.push({
+              title: currentTitle,
+              content: currentContent.join('\n').trim()
+            });
+          }
+          currentTitle = trimmed;
+          currentContent = [];
+          inContent = false;
+        } else {
+          if (currentTitle && !inContent) {
+            inContent = true;
+          }
+          if (currentTitle) {
+            currentContent.push(line);
+          }
+        }
+      }
+
+      if (currentTitle && currentContent.length > 0) {
+        songs.push({
+          title: currentTitle,
+          content: currentContent.join('\n').trim()
+        });
+      }
+
+      return songs.length > 1 ? songs : [];
+    }
+
+    function getItemContentType(item) {
+      if (!item) return null;
+      if (item.contentType) return item.contentType;
+      if (item.text && !item.content) return 'text';
+      if (item.parsedData) return 'bible';
+      if (item.content) return 'song';
+      return null;
+    }

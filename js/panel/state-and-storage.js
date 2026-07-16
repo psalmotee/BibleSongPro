@@ -12,6 +12,9 @@
           if (!db.objectStoreNames.contains(STORE_BIBLES)) {
             db.createObjectStore(STORE_BIBLES, { keyPath: 'id' });
           }
+          if (!db.objectStoreNames.contains(STORE_TEXTS)) {
+            db.createObjectStore(STORE_TEXTS, { keyPath: 'id' });
+          }
           if (!db.objectStoreNames.contains(STORE_STATE)) {
             db.createObjectStore(STORE_STATE, { keyPath: 'key' });
           }
@@ -45,6 +48,7 @@
     function idbPut(storeName, value) {
       if (storeName === STORE_SONGS) queueRelayStatePush({ includeSongs: true });
       if (storeName === STORE_BIBLES) queueRelayStatePush({ includeBibles: true });
+      if (storeName === STORE_TEXTS) queueRelayStatePush({ includeTexts: true });
       return openDb().then(db => new Promise((resolve, reject) => {
         const tx = db.transaction(storeName, 'readwrite');
         const store = tx.objectStore(storeName);
@@ -75,6 +79,7 @@
       if (!items.length) return Promise.resolve(true);
       if (storeName === STORE_SONGS) queueRelayStatePush({ includeSongs: true });
       if (storeName === STORE_BIBLES) queueRelayStatePush({ includeBibles: true });
+      if (storeName === STORE_TEXTS) queueRelayStatePush({ includeTexts: true });
       return openDb().then(db => new Promise((resolve, reject) => {
         const tx = db.transaction(storeName, 'readwrite');
         const store = tx.objectStore(storeName);
@@ -88,6 +93,7 @@
     function dbClearStore(storeName) {
       if (storeName === STORE_SONGS) queueRelayStatePush({ includeSongs: true });
       if (storeName === STORE_BIBLES) queueRelayStatePush({ includeBibles: true });
+      if (storeName === STORE_TEXTS) queueRelayStatePush({ includeTexts: true });
       return openDb().then(db => new Promise((resolve, reject) => {
         const tx = db.transaction(storeName, 'readwrite');
         const store = tx.objectStore(storeName);
@@ -370,6 +376,34 @@
         searchableText,
         createdAt: createdAtValue,
         updatedAt: now
+      };
+    }
+
+    function buildTextRecord(textDoc, { isNew = false } = {}) {
+      const now = Date.now();
+      const id = textDoc.id || createId('text', textDoc.title);
+      const textContent = textDoc.text || '';
+      const searchableText = normalizeSearchText(`${textDoc.title || ''}\n${textContent}`);
+      return {
+        id,
+        title: textDoc.title || '',
+        text: textContent,
+        searchableText,
+        contentType: 'text',
+        createdAt: isNew ? now : (textDoc.createdAt || now),
+        updatedAt: now
+      };
+    }
+
+    function hydrateTextFromRecord(record) {
+      return {
+        id: record.id,
+        title: record.title || '',
+        text: record.text || '',
+        contentType: 'text',
+        searchableText: record.searchableText || normalizeSearchText(`${record.title || ''}\n${record.text || ''}`),
+        createdAt: record.createdAt || Date.now(),
+        updatedAt: record.updatedAt || Date.now()
       };
     }
 

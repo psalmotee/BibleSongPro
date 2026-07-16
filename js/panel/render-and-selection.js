@@ -883,26 +883,62 @@
             renderVersionBar();
             updateBibleLists();
           } else if (name.endsWith('.txt')) {
-            const title = file.name.split('.')[0];
-            const newSong = {
-              id: createId('song', title),
-              title,
-              content: text,
-              text,
-              translatedLyrics: '',
-              translationLanguage: getSongBilingualSettings().targetLanguage,
-              translationStatus: 'idle',
-              translationLocked: false,
-              translatedAt: 0,
-              translationHash: computeTranslationHash(text, getSongBilingualSettings().targetLanguage),
-              searchableText: normalizeSearchText(`${title}\n${text}`),
-              createdAt: Date.now(),
-              updatedAt: Date.now()
-            };
-            songs.push(newSong);
-            idbPut(STORE_SONGS, buildSongRecord(newSong, { isNew: true })).catch(() => {});
-            maybeTranslateImportedSong(newSong);
-            importedCount += 1;
+            const fileName = file.name.split('.')[0];
+            const isSongStructured = detectSongStructure(text);
+            const multipleSongs = detectAndSplitMultipleSongs(text);
+
+            if (multipleSongs.length > 0) {
+              multipleSongs.forEach(songData => {
+                const newSong = {
+                  id: createId('song', songData.title),
+                  title: songData.title,
+                  content: songData.content,
+                  text: songData.content,
+                  translatedLyrics: '',
+                  translationLanguage: getSongBilingualSettings().targetLanguage,
+                  translationStatus: 'idle',
+                  translationLocked: false,
+                  translatedAt: 0,
+                  translationHash: computeTranslationHash(songData.content, getSongBilingualSettings().targetLanguage),
+                  searchableText: normalizeSearchText(`${songData.title}\n${songData.content}`),
+                  createdAt: Date.now(),
+                  updatedAt: Date.now()
+                };
+                songs.push(newSong);
+                idbPut(STORE_SONGS, buildSongRecord(newSong, { isNew: true })).catch(() => {});
+                maybeTranslateImportedSong(newSong);
+                importedCount += 1;
+              });
+            } else if (isSongStructured) {
+              const newSong = {
+                id: createId('song', fileName),
+                title: fileName,
+                content: text,
+                text,
+                translatedLyrics: '',
+                translationLanguage: getSongBilingualSettings().targetLanguage,
+                translationStatus: 'idle',
+                translationLocked: false,
+                translatedAt: 0,
+                translationHash: computeTranslationHash(text, getSongBilingualSettings().targetLanguage),
+                searchableText: normalizeSearchText(`${fileName}\n${text}`),
+                createdAt: Date.now(),
+                updatedAt: Date.now()
+              };
+              songs.push(newSong);
+              idbPut(STORE_SONGS, buildSongRecord(newSong, { isNew: true })).catch(() => {});
+              maybeTranslateImportedSong(newSong);
+              importedCount += 1;
+            } else {
+              const newText = {
+                id: createId('text', fileName),
+                title: fileName,
+                text
+              };
+              texts.push(newText);
+              idbPut(STORE_TEXTS, buildTextRecord(newText, { isNew: true })).catch(() => {});
+              importedCount += 1;
+            }
           } else {
             skippedUnsupported += 1;
             continue;
@@ -1053,6 +1089,14 @@
           }
         });
         return out.filter(Boolean);
+      }
+      return [];
+    }
+
+    function normalizeTextRecords(raw) {
+      if (Array.isArray(raw)) return raw.map(raw => buildTextRecord(raw, { isNew: false })).filter(Boolean);
+      if (raw && typeof raw === 'object') {
+        return Object.values(raw).map(raw => buildTextRecord(raw, { isNew: false })).filter(Boolean);
       }
       return [];
     }
@@ -1248,16 +1292,19 @@
         let songRecords = [];
         let bibleRecords = [];
         let stateEntry = null;
+        let textRecords = [];
         if (dbOk) {
           try {
             const results = await Promise.all([
               dbGetAll(STORE_SONGS),
               dbGetAll(STORE_BIBLES),
+              dbGetAll(STORE_TEXTS),
               idbGet(STORE_STATE, 'appState')
             ]);
             songRecords = results[0] || [];
             bibleRecords = results[1] || [];
-            stateEntry = results[2] || null;
+            textRecords = results[2] || [];
+            stateEntry = results[3] || null;
           } catch (e) {
             console.error('Backup export: IndexedDB read failed', e);
             dbOk = false;
@@ -1271,6 +1318,9 @@
         }
         if (!bibleRecords.length && Object.keys(bibles).length) {
           bibleRecords = Object.keys(bibles).map(name => buildBibleRecord(name, bibles[name] || [], { isNew: false })).filter(Boolean);
+        }
+        if (!textRecords.length && texts.length) {
+          textRecords = texts.map(t => buildTextRecord(t, { isNew: false })).filter(Boolean);
         }
         if (stateReady && appState) {
           syncAppStateFromUi();
@@ -1286,6 +1336,7 @@
           data: {
             songs: songRecords,
             bibles: bibleRecords,
+            texts: textRecords,
             appState: stateValue,
             settings,
             ltStyles: settings.ltStyles || ltStyles,
@@ -1414,6 +1465,7 @@
       const data = backup && backup.data ? backup.data : {};
       const songRecords = normalizeSongRecords(data.songs);
       const bibleRecords = normalizeBibleRecords(data.bibles);
+      const textRecords = normalizeTextRecords(data.texts);
       const mergedState = mergeAppStateWithDefaults(data.appState);
       const settings = (mergedState.settings && typeof mergedState.settings === 'object') ? { ...mergedState.settings } : {};
       if (data.settings && typeof data.settings === 'object') Object.assign(settings, data.settings);
@@ -1441,11 +1493,13 @@
         await Promise.all([
           dbClearStore(STORE_SONGS),
           dbClearStore(STORE_BIBLES),
+          dbClearStore(STORE_TEXTS),
           dbClearStore(STORE_STATE)
         ]);
         await Promise.all([
           dbPutMany(STORE_SONGS, songRecords),
           dbPutMany(STORE_BIBLES, bibleRecords),
+          dbPutMany(STORE_TEXTS, textRecords),
           dbSetAppState(mergedState),
           (mergedState.settings && mergedState.settings.ltStyles) ? idbPut(STORE_STATE, { key: 'ltStyles', value: mergedState.settings.ltStyles, updatedAt: Date.now() }) : Promise.resolve(true),
           bgSnapshot ? idbPut(STORE_STATE, { key: 'bgSettings', value: bgSnapshot, updatedAt: Date.now() }) : Promise.resolve(true),
@@ -1454,7 +1508,7 @@
           modeSnapshot ? idbPut(STORE_STATE, { key: 'modeSettings', value: modeSnapshot, updatedAt: Date.now() }) : Promise.resolve(true)
         ]);
 
-        applyLoadedState(mergedState, songRecords, bibleRecords, { runInit: false });
+        applyLoadedState(mergedState, songRecords, bibleRecords, textRecords, { runInit: false });
         stateReady = true;
         saveState();
         if (pendingPersist) {
@@ -1952,6 +2006,7 @@
 
     function getButtonContextList() {
       if (buttonContextTab === 'songs') return songs;
+      if (buttonContextTab === 'text') return texts;
       if (buttonContextTab === 'schedule') return schedule;
       return (activeBibleVersion && bibles[activeBibleVersion]) ? (bibles[activeBibleVersion] || []) : [];
     }
