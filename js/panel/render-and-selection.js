@@ -173,7 +173,7 @@
       let targetBookIndex = null;
 
       if (sidebarTab === 'bible' && currentItem) {
-        const currentPages = getPagesFromItem(currentItem, true);
+        const currentPages = getPagesFromItem(currentItem, shouldTreatAsIsBible(currentItem));
         const curPage = currentPages[lineCursor];
         if (curPage && curPage.raw) {
           const firstLine = (curPage.raw.split('\n').find(l => l.trim()) || '').trim();
@@ -212,7 +212,7 @@
           if (idx !== -1) {
             selectItem(idx, { preserveLineCursor: true, skipButtonView: true });
             const newItem = bibles[activeBibleVersion][idx];
-            const newPages = getPagesFromItem(newItem, true);
+            const newPages = getPagesFromItem(newItem, shouldTreatAsIsBible(newItem));
             let nextLineCursor = Math.min(targetLineCursor, Math.max(0, newPages.length - 1));
             if (targetVerse) {
               const foundIdx = newPages.findIndex(p => (p.raw || '').split('\n').some(line => line.trim().startsWith(`${targetVerse} `)));
@@ -529,11 +529,12 @@
         close();
         const isBible = (tab === 'bible');
         const isSong = (tab === 'songs');
+        const isText = (tab === 'text');
         const isSchedule = (tab === 'schedule');
         const items = [];
 
         /* ── Common actions ── */
-        if (!isSchedule) {
+        if (!isSchedule && !isText) {
           items.push({ label: t('common_add_to_setlist'), icon: '+', action: () => {
             const list = isSong ? songs : (activeBibleVersion ? bibles[activeBibleVersion] : []);
             if (list[itemIndex]) {
@@ -574,6 +575,23 @@
             if (!target) { close(); return; }
             showConfirm(t('common_rename_song'), t('common_enter_new_song_title'), (inputValue) => {
               renameSongTitle(itemIndex, inputValue);
+            }, true, target.title || '');
+            close();
+          }});
+        }
+
+        if (isText) {
+          items.push({ label: t('common_project_live'), icon: '▶', action: () => {
+            buttonContextTab = 'text';
+            selectItem(itemIndex);
+            projectLive(true);
+            close();
+          }});
+          items.push({ label: t('common_rename_song'), icon: '✎', action: () => {
+            const target = texts[itemIndex];
+            if (!target) { close(); return; }
+            showConfirm(t('common_rename_song'), t('common_enter_new_text_title'), (inputValue) => {
+              renameTextTitle(itemIndex, inputValue);
             }, true, target.title || '');
             close();
           }});
@@ -2009,6 +2027,13 @@
       if (buttonContextTab === 'text') return texts;
       if (buttonContextTab === 'schedule') return schedule;
       return (activeBibleVersion && bibles[activeBibleVersion]) ? (bibles[activeBibleVersion] || []) : [];
+    }
+
+    function shouldTreatAsIsBible(item) {
+      if (!item) return false;
+      if (item.parsedData) return true;
+      if (buttonContextTab === 'bible') return true;
+      return false;
     }
 
     function selectItem(i, opts = {}) {

@@ -323,7 +323,8 @@
 
     function getPagesFromItem(item, isBible, lineCountOverride = null) {
       if (!item) return [];
-      const cacheKey = getPagesCacheKey(item, isBible, lineCountOverride);
+      const isText = item.contentType === 'text' || (!item.content && item.text);
+      const cacheKey = getPagesCacheKey(item, isBible || isText, lineCountOverride);
       if (cacheKey && ITEM_PAGES_CACHE.has(cacheKey)) {
         return ITEM_PAGES_CACHE.get(cacheKey);
       }
@@ -333,13 +334,53 @@
         return setBoundedCacheValue(ITEM_PAGES_CACHE, cacheKey, [{
           text: snapshot.text || '',
           raw: snapshot.raw || '',
-          tag: snapshot.tag || 'Scripture',
+          tag: snapshot.tag || (isText ? 'Text' : 'Scripture'),
           verseCount: snapshot.verseCount || 0,
           startVerse: snapshot.startVerse || getFirstVerseNumber(snapshot.raw)
         }], ITEM_PAGES_CACHE_LIMIT);
       }
-      let lines = normalizeSongLyricsLineBreaks(item.content || "").split('\n').map(l => l.trim());
-      if (!isBible) {
+      let lines = normalizeSongLyricsLineBreaks(item.content || item.text || "").split('\n').map(l => l.trim());
+      if (isText) {
+        const pages = [];
+        const paragraphs = [];
+        let currentParagraph = [];
+        lines.forEach((line) => {
+          if (!line) {
+            if (currentParagraph.length) {
+              paragraphs.push(currentParagraph.join('\n'));
+              currentParagraph = [];
+            }
+          } else {
+            currentParagraph.push(line);
+          }
+        });
+        if (currentParagraph.length) {
+          paragraphs.push(currentParagraph.join('\n'));
+        }
+        let linesAccum = [];
+        paragraphs.forEach((para) => {
+          const paraLines = para.split('\n');
+          paraLines.forEach((line) => {
+            linesAccum.push(line);
+            if (linesAccum.length >= effectiveLinesPerPage) {
+              pages.push({
+                text: `<p>${linesAccum.join('<br>')}</p>`,
+                raw: linesAccum.join('\n'),
+                tag: 'Text'
+              });
+              linesAccum = [];
+            }
+          });
+        });
+        if (linesAccum.length) {
+          pages.push({
+            text: `<p>${linesAccum.join('<br>')}</p>`,
+            raw: linesAccum.join('\n'),
+            tag: 'Text'
+          });
+        }
+        return setBoundedCacheValue(ITEM_PAGES_CACHE, cacheKey, pages, ITEM_PAGES_CACHE_LIMIT);
+      } else if (!isBible) {
         const filteredLines = [];
         let tag = "Lyrics";
         let categoryTag = '';

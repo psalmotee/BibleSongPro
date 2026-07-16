@@ -59,11 +59,12 @@
         index: currentIndex,
         lineCursor
       };
-      if (!currentItem || !getIsBibleItem(currentItem)) return nav;
+      const isBible = currentItem && (currentItem.parsedData || getItemContentType(currentItem) === 'bible');
+      if (!currentItem || !isBible) return nav;
       const extracted = extractBookAndChapter(currentItem);
       nav.book = extracted.book;
       nav.chapter = extracted.chap;
-      const pages = getPagesFromItem(currentItem, true);
+      const pages = getPagesFromItem(currentItem, isBible);
       const page = pages[lineCursor];
       if (page && page.raw) {
         const lines = page.raw.split('\n').map(l => l.trim()).filter(Boolean);

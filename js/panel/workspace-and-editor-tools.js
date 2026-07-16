@@ -1620,6 +1620,27 @@
       showToast('Song title renamed');
       return true;
     }
+
+    function renameTextTitle(textIndex, nextTitleRaw) {
+      const idx = Number(textIndex);
+      if (!Number.isFinite(idx) || idx < 0 || idx >= texts.length) return false;
+      const textDoc = texts[idx];
+      if (!textDoc) return false;
+      const nextTitle = String(nextTitleRaw || '').trim();
+      if (!nextTitle) {
+        showToast('Text title cannot be empty');
+        return false;
+      }
+      textDoc.title = nextTitle;
+      textDoc.updatedAt = Date.now();
+      textDoc.searchableText = normalizeSearchText(`${textDoc.title}\n${textDoc.text || ''}`);
+      idbPut(STORE_TEXTS, buildTextRecord(textDoc, { isNew: false })).catch(() => {});
+      renderSongs();
+      saveState();
+      saveToStorageDebounced();
+      showToast('Text title renamed');
+      return true;
+    }
     
     function prevSlide() {
       if (!currentItem) return;
