@@ -255,7 +255,6 @@
 
     /* Verse Styling */
     .jo-body {
-      padding-left: 0 !important;
       display: block;
       transition: all 0.3s ease;
     }
@@ -427,7 +426,6 @@
     }
     
     .lt-song.mode-lt .jo-body {
-      padding-left: 0 !important;
       text-align: center;
       width: 100%;
     }
@@ -447,7 +445,6 @@
     }
     
     .mode-full .jo-body {
-      padding-left: 0 !important;
       text-align: center;
       width: 100%;
     }
