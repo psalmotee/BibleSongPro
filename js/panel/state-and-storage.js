@@ -185,13 +185,34 @@
       return built.entries;
     }
 
+    function expandBibleAbbreviation(abbrev) {
+      const abbrevMap = {
+        'gen': 'genesis', 'ex': 'exodus', 'lev': 'leviticus', 'num': 'numbers', 'deu': 'deuteronomy',
+        'jos': 'joshua', 'jdg': 'judges', 'rut': 'ruth', '1sa': '1 samuel', '2sa': '2 samuel',
+        '1ki': '1 kings', '2ki': '2 kings', '1ch': '1 chronicles', '2ch': '2 chronicles',
+        'ezr': 'ezra', 'neh': 'nehemiah', 'est': 'esther', 'job': 'job', 'psa': 'psalms', 'pro': 'proverbs',
+        'ecc': 'ecclesiastes', 'sos': 'song of solomon', 'isa': 'isaiah', 'jer': 'jeremiah',
+        'lam': 'lamentations', 'eze': 'ezekiel', 'dan': 'daniel', 'hos': 'hosea', 'joe': 'joel',
+        'amo': 'amos', 'oba': 'obadiah', 'jon': 'jonah', 'mic': 'micah', 'nah': 'nahum',
+        'hab': 'habakkuk', 'zep': 'zephaniah', 'hag': 'haggai', 'zec': 'zechariah', 'mal': 'malachi',
+        'mat': 'matthew', 'mar': 'mark', 'luk': 'luke', 'joh': 'john', 'act': 'acts', 'rom': 'romans',
+        '1co': '1 corinthians', '2co': '2 corinthians', 'gal': 'galatians', 'eph': 'ephesians',
+        'phi': 'philippians', 'col': 'colossians', '1th': '1 thessalonians', '2th': '2 thessalonians',
+        '1ti': '1 timothy', '2ti': '2 timothy', 'tit': 'titus', 'phl': 'philemon', 'heb': 'hebrews',
+        'jas': 'james', '1pe': '1 peter', '2pe': '2 peter', '1jo': '1 john', '2jo': '2 john',
+        '3jo': '3 john', 'jud': 'jude', 'rev': 'revelation'
+      };
+      return abbrevMap[normalizeSearchText(abbrev)] || abbrev;
+    }
+
     function parseBibleReferenceQuery(raw) {
       const q = normalizeSearchText(raw).trim();
       if (!q) return null;
       const match = q.match(/^([\p{L}1-3 ]+)\s+(\d+)(?::(\d*))?$/u);
       if (!match) return null;
       const [, bookRaw, chapterRaw, versePrefixRaw] = match;
-      const book = normalizeSearchText(bookRaw).trim();
+      let book = normalizeSearchText(bookRaw).trim();
+      book = expandBibleAbbreviation(book) || book;
       const chapter = String(chapterRaw || '').trim();
       const versePrefix = String(versePrefixRaw || '');
       const hasColon = q.includes(':');
