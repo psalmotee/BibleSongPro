@@ -7,7 +7,7 @@
     }
 
     function updateActivityBarUi(tabId) {
-      const map = { bible: 'ab-bible', song: 'ab-song', schedule: 'ab-schedule' };
+      const map = { bible: 'ab-bible', song: 'ab-song', text: 'ab-text', schedule: 'ab-schedule' };
       document.querySelectorAll('#activity-bar .ab-btn').forEach(b => b.classList.remove('active'));
       const id = map[tabId];
       if (id) {

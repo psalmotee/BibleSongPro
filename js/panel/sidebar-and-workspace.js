@@ -47,6 +47,11 @@
         setSidebarTab('songs');
         return;
       }
+      if (tabId === 'text') {
+        updateDockSceneTabUi('text');
+        setSidebarTab('text');
+        return;
+      }
       if (tabId === 'bible') {
         updateDockSceneTabUi('bible');
         setSidebarTab('bible');
@@ -68,16 +73,19 @@
       if (useFocusedWorkspaceControls && FOCUSED_WORKSPACE_TABS.includes(prevTab)) {
         saveFocusedWorkspaceControlsForTab(prevTab);
       }
-      activeWorkspaceTab = (tab === 'songs') ? 'song' : ((tab === 'schedule') ? 'schedule' : 'bible');
+      activeWorkspaceTab = (tab === 'songs') ? 'song' : ((tab === 'text') ? 'text' : ((tab === 'schedule') ? 'schedule' : 'bible'));
       saveWorkspaceTabPreference(activeWorkspaceTab);
       document.body.dataset.sidebarTab = tab;
       if (tab === 'songs') updateDockSceneTabUi('song');
+      if (tab === 'text') updateDockSceneTabUi('text');
       if (tab === 'bible') updateDockSceneTabUi('bible');
       if (tab === 'schedule') updateActivityBarUi('schedule');
       if (prevTab === 'bible') {
         lastBibleWorkspaceSelection = captureCurrentBibleSelection();
       } else if (prevTab === 'songs') {
         lastSongWorkspaceSelection = captureCurrentSongSelection();
+      } else if (prevTab === 'text') {
+        lastTextWorkspaceSelection = captureCurrentSongSelection();
       }
       // save outgoing tab's sidebar height before switching
       if (window._saveSidebarTabHeight) window._saveSidebarTabHeight(prevTab);
