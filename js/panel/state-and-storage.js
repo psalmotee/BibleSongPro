@@ -162,9 +162,10 @@
         const extracted = extractBookAndChapter(item);
         const book = item?.book || extracted.book || '';
         const chap = item?.chapter || extracted.chap || '';
-        const lines = String(item?.content || '').split('\n');
-        lines.forEach((line) => {
-          const match = line.match(/^(\d+)\s+(.+)/);
+        const content = item?.parsedData || item?.content || '';
+        const lines = Array.isArray(content) ? content.join('\n') : String(content);
+        lines.split('\n').forEach((line) => {
+          const match = String(line || '').match(/^(\d+)\s+(.+)/);
           if (!match) return;
           const verse = match[1];
           const text = match[2];
