@@ -572,17 +572,25 @@
     }
 
     function getMaxLinesForCurrentTab(tab = sidebarTab) {
-      return (tab === 'songs') ? 6 : 3;
+      return 10;
     }
 
     function updateLinePickerAvailability() {
-      const isSongs = (sidebarTab === 'songs');
+      const isSongsOrText = (sidebarTab === 'songs' || sidebarTab === 'text');
       const btn4 = document.getElementById('line-4');
       const btn5 = document.getElementById('line-5');
       const btn6 = document.getElementById('line-6');
-      if (btn4) btn4.disabled = !isSongs;
-      if (btn5) btn5.disabled = !isSongs;
-      if (btn6) btn6.disabled = !isSongs;
+      const btn7 = document.getElementById('line-7');
+      const btn8 = document.getElementById('line-8');
+      const btn9 = document.getElementById('line-9');
+      const btn10 = document.getElementById('line-10');
+      if (btn4) btn4.disabled = !isSongsOrText;
+      if (btn5) btn5.disabled = !isSongsOrText;
+      if (btn6) btn6.disabled = !isSongsOrText;
+      if (btn7) btn7.disabled = !isSongsOrText;
+      if (btn8) btn8.disabled = !isSongsOrText;
+      if (btn9) btn9.disabled = !isSongsOrText;
+      if (btn10) btn10.disabled = !isSongsOrText;
     }
 
     function isCustomModeAllowed() {
