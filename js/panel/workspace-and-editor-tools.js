@@ -96,6 +96,7 @@
 
     function getWorkspaceLabelText(tab = sidebarTab) {
       if (tab === 'songs') return 'Song';
+      if (tab === 'text') return 'Text';
       if (tab === 'schedule') return 'Setlist';
       return 'Bible';
     }
