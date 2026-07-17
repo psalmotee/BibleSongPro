@@ -342,35 +342,18 @@
       let lines = normalizeSongLyricsLineBreaks(item.content || item.text || "").split('\n').map(l => l.trim());
       if (isText) {
         const pages = [];
-        const paragraphs = [];
-        let currentParagraph = [];
-        lines.forEach((line) => {
-          if (!line) {
-            if (currentParagraph.length) {
-              paragraphs.push(currentParagraph.join('\n'));
-              currentParagraph = [];
-            }
-          } else {
-            currentParagraph.push(line);
-          }
-        });
-        if (currentParagraph.length) {
-          paragraphs.push(currentParagraph.join('\n'));
-        }
+        const maxLinesPerPage = Math.max(20, effectiveLinesPerPage * 2);
         let linesAccum = [];
-        paragraphs.forEach((para) => {
-          const paraLines = para.split('\n');
-          paraLines.forEach((line) => {
-            linesAccum.push(line);
-            if (linesAccum.length >= effectiveLinesPerPage) {
-              pages.push({
-                text: `<p>${linesAccum.join('<br>')}</p>`,
-                raw: linesAccum.join('\n'),
-                tag: 'Text'
-              });
-              linesAccum = [];
-            }
-          });
+        lines.forEach((line) => {
+          linesAccum.push(line);
+          if (linesAccum.length >= maxLinesPerPage) {
+            pages.push({
+              text: `<p>${linesAccum.join('<br>')}</p>`,
+              raw: linesAccum.join('\n'),
+              tag: 'Text'
+            });
+            linesAccum = [];
+          }
         });
         if (linesAccum.length) {
           pages.push({
@@ -378,6 +361,9 @@
             raw: linesAccum.join('\n'),
             tag: 'Text'
           });
+        }
+        if (pages.length === 0) {
+          pages.push({ text: '<p></p>', raw: '', tag: 'Text' });
         }
         return setBoundedCacheValue(ITEM_PAGES_CACHE, cacheKey, pages, ITEM_PAGES_CACHE_LIMIT);
       } else if (!isBible) {
@@ -1292,13 +1278,20 @@
       if (isScheduleItem) {
         scheduleReturnTarget = buildScheduleRestoreTarget(currentItem);
       }
-      liveKind = isBible ? 'bible' : 'songs';
+      const isText = currentItem && currentItem.contentType === 'text';
+      liveKind = isBible ? 'bible' : (isText ? 'text' : 'songs');
       if (isBible) {
         livePointer = {
           kind: 'bible',
           version: currentItem.version,
           index: currentIndex,
           source: isScheduleItem ? 'schedule' : 'bible'
+        };
+      } else if (isText) {
+        livePointer = {
+          kind: 'text',
+          index: currentIndex,
+          source: isScheduleItem ? 'schedule' : 'text'
         };
       } else {
         livePointer = {
@@ -1458,84 +1451,37 @@
 
     function detectSongStructure(text) {
       const lines = String(text || '').split('\n');
-      let hasBracketHeaders = false;
-      let hasNamedHeaders = false;
-      let hasNumericHeaders = false;
-      let hasBlankLines = false;
+      const textLower = String(text || '').toLowerCase();
+      
+      let sectionMarkerCount = 0;
+      let contentLineCount = 0;
+      let blankLineCount = 0;
 
       lines.forEach(line => {
         const trimmed = String(line || '').trim();
         if (!trimmed) {
-          hasBlankLines = true;
+          blankLineCount++;
           return;
         }
-        if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-          hasBracketHeaders = true;
-        }
-        if (parseNamedSongSectionHeader(trimmed)) {
-          hasNamedHeaders = true;
-        }
-        if (parseSongVerseHeader(trimmed, true)) {
-          hasNumericHeaders = true;
-        }
+        contentLineCount++;
+        
+        const isSectionMarker = (
+          (trimmed.startsWith('[') && trimmed.endsWith(']')) ||
+          /^(verse|chorus|bridge|refrain|pre[-\s]?chorus|intro|outro|couplet)(\s+\d+)?[:.\-]?/i.test(trimmed) ||
+          /^\d+[:.,]\s*$/.test(trimmed)
+        );
+        if (isSectionMarker) sectionMarkerCount++;
       });
 
-      const songStructureScore = (hasBracketHeaders ? 3 : 0) + (hasNamedHeaders ? 3 : 0) + (hasNumericHeaders ? 2 : 0) + (hasBlankLines ? 1 : 0);
-      return songStructureScore >= 3;
+      const hasMultipleSections = sectionMarkerCount >= 2;
+      const hasSongKeywords = /\b(verse|chorus|bridge|refrain|hook|breakdown|interlude|outro|coda|pre-chorus)\b/i.test(textLower);
+      const isSong = (hasMultipleSections && contentLineCount > 10) || (hasSongKeywords && contentLineCount > 15);
+      
+      return isSong;
     }
 
     function detectAndSplitMultipleSongs(text) {
-      const lines = String(text || '').split('\n');
-      const songs = [];
-      let currentTitle = '';
-      let currentContent = [];
-      let inContent = false;
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const trimmed = String(line || '').trim();
-
-        if (!trimmed) {
-          if (inContent) currentContent.push(line);
-          continue;
-        }
-
-        const isAllCaps = trimmed === trimmed.toUpperCase() && trimmed.length > 2 && /[a-z]/i.test(trimmed);
-        const isLikeTitleEnd = trimmed.endsWith('™') || trimmed.endsWith('®') || trimmed.endsWith('©');
-        const nextLineIsSection = i + 1 < lines.length && (
-          /^\s*\[/.test(lines[i + 1]) ||
-          /^(verse|chorus|bridge|refrain|pre[-\s]?chorus|intro|outro)(\s+\d+)?[:.\-]?/i.test(lines[i + 1]) ||
-          /^\d+[:.,]\s*/.test(lines[i + 1])
-        );
-
-        if ((isAllCaps || isLikeTitleEnd || (nextLineIsSection && !inContent)) && trimmed.length > 0) {
-          if (currentTitle && currentContent.length > 0) {
-            songs.push({
-              title: currentTitle,
-              content: currentContent.join('\n').trim()
-            });
-          }
-          currentTitle = trimmed;
-          currentContent = [];
-          inContent = false;
-        } else {
-          if (currentTitle && !inContent) {
-            inContent = true;
-          }
-          if (currentTitle) {
-            currentContent.push(line);
-          }
-        }
-      }
-
-      if (currentTitle && currentContent.length > 0) {
-        songs.push({
-          title: currentTitle,
-          content: currentContent.join('\n').trim()
-        });
-      }
-
-      return songs.length > 1 ? songs : [];
+      return [];
     }
 
     function getItemContentType(item) {

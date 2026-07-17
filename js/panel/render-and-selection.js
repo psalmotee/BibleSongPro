@@ -4,10 +4,12 @@
       if (!inp) return;
       if (sidebarTab === 'bible') inp.placeholder = t('ui_search_bible');
       else if (sidebarTab === 'schedule') inp.placeholder = t('ui_search_setlist');
+      else if (sidebarTab === 'text') inp.placeholder = t('ui_search_text');
       else inp.placeholder = t('ui_search_songs');
       updateBibleSearchToolsVisibility();
       if (mirror) mirror.placeholder = inp.placeholder;
       restoreSearchInputForCurrentTab();
+      renderSongs();
     }
 
 
@@ -27,6 +29,11 @@
       if (sidebarTab === 'songs' && songs.length) {
         const hasValidSongSelection = !!(currentItem && !isBibleCurrent && songs.includes(currentItem));
         if (!hasValidSongSelection) selectItem(0);
+        return;
+      }
+      if (sidebarTab === 'text' && texts.length) {
+        const hasValidTextSelection = !!(currentItem && texts.includes(currentItem));
+        if (!hasValidTextSelection) selectItem(0);
         return;
       }
       if (sidebarTab === 'schedule' && schedule.length) {
@@ -699,7 +706,7 @@
       const q = normalizeSearchText(qRaw);
       list.replaceChildren();
       list._navMirrorItems = [];
-      if (sidebarTab === 'bible' && qRaw.trim().length >= 2 && !isBibleReferenceQuery(qRaw)) {
+      if (sidebarTab === 'bible' && qRaw.trim().length >= 1) {
         renderBibleSearchResults(qRaw);
         return;
       }
@@ -903,31 +910,8 @@
           } else if (name.endsWith('.txt')) {
             const fileName = file.name.split('.')[0];
             const isSongStructured = detectSongStructure(text);
-            const multipleSongs = detectAndSplitMultipleSongs(text);
 
-            if (multipleSongs.length > 0) {
-              multipleSongs.forEach(songData => {
-                const newSong = {
-                  id: createId('song', songData.title),
-                  title: songData.title,
-                  content: songData.content,
-                  text: songData.content,
-                  translatedLyrics: '',
-                  translationLanguage: getSongBilingualSettings().targetLanguage,
-                  translationStatus: 'idle',
-                  translationLocked: false,
-                  translatedAt: 0,
-                  translationHash: computeTranslationHash(songData.content, getSongBilingualSettings().targetLanguage),
-                  searchableText: normalizeSearchText(`${songData.title}\n${songData.content}`),
-                  createdAt: Date.now(),
-                  updatedAt: Date.now()
-                };
-                songs.push(newSong);
-                idbPut(STORE_SONGS, buildSongRecord(newSong, { isNew: true })).catch(() => {});
-                maybeTranslateImportedSong(newSong);
-                importedCount += 1;
-              });
-            } else if (isSongStructured) {
+            if (isSongStructured) {
               const newSong = {
                 id: createId('song', fileName),
                 title: fileName,
@@ -1694,7 +1678,7 @@
         { key: 'malaysian', patterns: ['malaysian', 'bahasa melayu', 'malay'] },
         { key: 'maori', patterns: ['maori', 'māori'] },
         { key: 'marathi', patterns: ['marathi', 'मराठी'] },
-        { key: 'marwari', patterns: ['marwari', 'मारवाड़ी', 'मारवाड़ी'] },
+        { key: 'marwari', patterns: ['marwari', 'मारवा��़ी', 'मारवाड़ी'] },
         { key: 'marshallese', patterns: ['marshallese'] },
         { key: 'mauritian_creole', patterns: ['mauritian creole', 'mauritian', 'morisyen'] },
         { key: 'mazanderani', patterns: ['mazanderani', 'mazandarani', 'مازندرانی'] },
