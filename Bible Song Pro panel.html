@@ -265,7 +265,7 @@
       </div>
 
       <div class="search-container">
-        <input type="text" id="song-search" placeholder="Search lyrics..." data-i18n-placeholder="ui_search_songs" oninput="handleSearch();_updateAutocomplete()" autocomplete="off">
+        <input type="text" id="song-search" placeholder="Search lyrics..." data-i18n-placeholder="ui_search_songs" oninput="handleSearch();_updateAutocomplete()" onkeydown="handleBibleSpaceToColon(event)" autocomplete="off">
         <button type="button" id="bible-ref-pin-current" class="bible-search-tool-btn" title="Pin current reference" data-i18n-title="ui_pin_current_reference">P</button>
         <button type="button" id="bible-ref-history-btn" class="bible-search-tool-btn" title="Pinned and recent references" data-i18n-title="ui_pinned_recent_references">R</button>
         <div id="search-autocomplete"></div>
