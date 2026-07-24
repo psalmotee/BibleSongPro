@@ -11089,8 +11089,11 @@
       flex-grow: 1;
       padding: var(--space-md);
       overflow-y: auto;
-      display: block;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
       background: var(--bg-dark);
+      align-items: stretch;
     }
 
     .modal-overlay {
@@ -11432,7 +11435,7 @@
     }
     
     .lyric-btn {
-      flex: 1;
+      flex: 0 1 auto;
       width: 100%;
       padding: 12px;
       background: rgba(255, 255, 255, 0.03);
@@ -11447,8 +11450,14 @@
                   border-color var(--duration-instant) var(--ease-out),
                   transform var(--duration-fast) var(--ease-spring);
       position: relative;
-      line-height: 1.5;
+      line-height: 1.6;
       font-family: inherit;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     
     .lyric-btn:hover {

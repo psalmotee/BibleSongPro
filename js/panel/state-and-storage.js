@@ -207,16 +207,26 @@
 
     function parseBibleReferenceQuery(raw) {
       const q = normalizeSearchText(raw).trim();
-      if (!q) return null;
+      console.log("[v0] parseBibleReferenceQuery raw:", raw, "normalized q:", q);
+      if (!q) {
+        console.log("[v0] Empty query, returning null");
+        return null;
+      }
       const match = q.match(/^([\p{L}1-3 ]+)\s+(\d+)(?::(\d*))?$/u);
-      if (!match) return null;
+      console.log("[v0] Regex match result:", match);
+      if (!match) {
+        console.log("[v0] No regex match, returning null");
+        return null;
+      }
       const [, bookRaw, chapterRaw, versePrefixRaw] = match;
       let book = normalizeSearchText(bookRaw).trim();
+      console.log("[v0] bookRaw:", bookRaw, "book after normalize:", book);
       book = expandBibleAbbreviation(book) || book;
+      console.log("[v0] book after abbreviation expansion:", book);
       const chapter = String(chapterRaw || '').trim();
       const versePrefix = String(versePrefixRaw || '');
       const hasColon = q.includes(':');
-      return {
+      const result = {
         raw,
         normalizedQuery: q,
         book,
@@ -226,6 +236,8 @@
         isChapterQuery: !hasColon || !versePrefix,
         isVersePrefixQuery: hasColon && !!versePrefix
       };
+      console.log("[v0] Returning parsed result:", result);
+      return result;
     }
 
     function isBibleReferenceQuery(raw) {
