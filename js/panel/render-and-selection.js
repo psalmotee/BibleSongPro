@@ -1898,20 +1898,14 @@
     function handleSearchImmediate(qRaw, tabAtInput) {
       const targetTab = getSearchTabKey(tabAtInput || sidebarTab);
       if (sidebarTab !== targetTab) return;
-      let q = normalizeSearchText(qRaw || "");
-      console.log("[v0] handleSearchImmediate qRaw:", qRaw, "normalized q:", q, "targetTab:", targetTab);
-      // Normalize "Book chapter verse" to "Book chapter:verse" (space as colon)
+      let q = String(qRaw || '').trim();
+      // Try space-to-colon conversion for Bible references
       if (targetTab === 'bible' && !q.includes(':')) {
         const spaceVerseMatch = q.match(/^([\p{L}1-3 ]+\s+\d+)\s+(\d+(?:-\d+)?)$/u);
-        if (spaceVerseMatch) {
-          q = spaceVerseMatch[1] + ':' + spaceVerseMatch[2];
-          console.log("[v0] Converted space to colon format:", q);
-        }
+        if (spaceVerseMatch) q = spaceVerseMatch[1] + ':' + spaceVerseMatch[2];
       }
-      const parsed = parseBibleReferenceQuery(q);
-      console.log("[v0] parseBibleReferenceQuery result:", parsed, "targetTab === bible:", targetTab === 'bible');
-      if (targetTab === 'bible' && parsed) {
-        console.log("[v0] Calling renderBibleSearchResults");
+      // Check if it's a Bible reference query
+      if (targetTab === 'bible' && parseBibleReferenceQuery(q)) {
         renderBibleSearchResults(q);
         return;
       }
